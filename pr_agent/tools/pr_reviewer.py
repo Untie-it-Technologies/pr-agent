@@ -177,7 +177,20 @@ class PRReviewer:
                                                             update_header=True,
                                                             final_update_message=final_update_message, )
             else:
+                # Skip posting if an identical review comment is already present (duplicate suppression)
+                if self.incremental.is_incremental and hasattr(self.git_provider, "is_duplicate_comment"):
+                    if self.git_provider.is_duplicate_comment(pr_review):
+                        get_logger().info("Incremental review output is identical to an existing comment — skipping post")
+                        self.git_provider.remove_initial_comment()
+                        return
                 self.git_provider.publish_comment(pr_review)
+
+            # Persist the current head SHA so the next incremental review knows where to start.
+            if hasattr(self.git_provider, "store_reviewed_sha"):
+                try:
+                    self.git_provider.store_reviewed_sha(self.git_provider.pr.head.sha)
+                except Exception as e:
+                    get_logger().warning(f"Failed to store reviewed SHA after publishing review: {e}")
 
             self.git_provider.remove_initial_comment()
         except Exception as e:

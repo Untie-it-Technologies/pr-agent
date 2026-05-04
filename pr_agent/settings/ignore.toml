@@ -4,6 +4,26 @@ glob = [
     # Ignore files and directories matching these glob patterns.
     # See https://docs.python.org/3/library/glob.html
     'vendor/**',
+    # Lock files — these change frequently and are not user-authored
+    '**/package-lock.json',
+    '**/yarn.lock',
+    '**/pnpm-lock.yaml',
+    '**/poetry.lock',
+    '**/Pipfile.lock',
+    '**/Gemfile.lock',
+    '**/composer.lock',
+    '**/go.sum',
+    '**/Cargo.lock',
+    # Common generated files / build artefacts
+    '**/dist/**',
+    '**/build/**',
+    '**/.next/**',
+    '**/__pycache__/**',
+    '**/*.pb.go',
+    '**/*.pb.py',
+    '**/*.generated.*',
+    '**/*.min.js',
+    '**/*.min.css',
 ]
 regex = [
     # Ignore files and directories matching these regex patterns.

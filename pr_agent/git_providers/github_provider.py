@@ -149,6 +149,9 @@ class GithubProvider(GitProvider):
         self.repo, self.pr_num = self._parse_pr_url(pr_url)
         self.pr = self._get_pr()
 
+    # Tag embedded in a hidden HTML comment to track the last reviewed SHA without external storage.
+    SHA_COMMENT_TAG = "<!-- pr-agent-sha:"
+
     def _get_incremental_commits(self):
         if not self.pr_commits:
             self.pr_commits = list(self.pr.get_commits())
@@ -156,16 +159,107 @@ class GithubProvider(GitProvider):
         self.previous_review = self.get_previous_review(full=True, incremental=True)
         if self.previous_review:
             self.incremental.commits_range = self.get_commit_range()
-            # Get all files changed during the commit range
 
-            for commit in self.incremental.commits_range:
-                if commit.commit.message.startswith(f"Merge branch '{self._get_repo().default_branch}'"):
-                    get_logger().info(f"Skipping merge commit {commit.commit.message}")
-                    continue
-                self.unreviewed_files_set.update({file.filename: file for file in commit.files})
+            # Use a single compare() call instead of walking per-commit file lists.
+            # This gives the exact diff between the last-reviewed state and the current head
+            # with far fewer GitHub API calls.
+            prev_sha = self.incremental.last_seen_commit_sha
+            head_sha = self.pr.head.sha
+            if prev_sha and head_sha and prev_sha != head_sha:
+                try:
+                    comparison = self._get_repo().compare(prev_sha, head_sha)
+                    for f in comparison.files:
+                        # Skip merge commits already handled by get_commit_range()
+                        self.unreviewed_files_set[f.filename] = f
+                    get_logger().info(
+                        f"Incremental diff via compare({prev_sha[:7]}...{head_sha[:7]}): "
+                        f"{len(self.unreviewed_files_set)} files changed"
+                    )
+                except Exception as e:
+                    get_logger().warning(
+                        f"Failed to get incremental diff via compare(), falling back to per-commit walk: {e}"
+                    )
+                    # Fallback: original per-commit file walk
+                    for commit in self.incremental.commits_range:
+                        if commit.commit.message.startswith(
+                            f"Merge branch '{self._get_repo().default_branch}'"
+                        ):
+                            get_logger().info(f"Skipping merge commit {commit.commit.message}")
+                            continue
+                        self.unreviewed_files_set.update({file.filename: file for file in commit.files})
+            else:
+                # No previous SHA or already up-to-date — fall back to full review
+                get_logger().info("No usable previous SHA for incremental diff, falling back to full review")
+                self.incremental.is_incremental = False
         else:
             get_logger().info("No previous review found, will review the entire PR")
             self.incremental.is_incremental = False
+
+    # ------------------------------------------------------------------
+    # Stateless SHA tracking via hidden PR comments
+    # ------------------------------------------------------------------
+
+    def get_reviewed_sha_from_comments(self) -> Optional[str]:
+        """Return the last reviewed HEAD SHA stored in a hidden PR comment, or None."""
+        try:
+            if not getattr(self, "comments", None):
+                self.comments = list(self.pr.get_issue_comments())
+            for comment in reversed(self.comments):
+                body = comment.body or ""
+                if self.SHA_COMMENT_TAG in body:
+                    for line in body.splitlines():
+                        line = line.strip()
+                        if line.startswith(self.SHA_COMMENT_TAG):
+                            sha = line[len(self.SHA_COMMENT_TAG):].strip().rstrip("-->")
+                            if sha:
+                                return sha.strip()
+        except Exception as e:
+            get_logger().warning(f"Failed to read reviewed SHA from comments: {e}")
+        return None
+
+    def store_reviewed_sha(self, sha: str) -> None:
+        """Persist the reviewed HEAD SHA in a hidden HTML comment on the PR.
+
+        On subsequent runs the comment is updated in-place to avoid accumulating
+        multiple tracking comments.
+        """
+        tag_body = f"{self.SHA_COMMENT_TAG} {sha} -->"
+        try:
+            if not getattr(self, "comments", None):
+                self.comments = list(self.pr.get_issue_comments())
+            for comment in self.comments:
+                if self.SHA_COMMENT_TAG in (comment.body or ""):
+                    comment.edit(tag_body)
+                    get_logger().info(f"Updated SHA tracking comment to {sha[:7]}")
+                    return
+            # No existing tracking comment — create one
+            self.pr.create_issue_comment(tag_body)
+            get_logger().info(f"Created SHA tracking comment for {sha[:7]}")
+        except Exception as e:
+            get_logger().warning(f"Failed to store reviewed SHA in comments: {e}")
+
+    # ------------------------------------------------------------------
+    # Duplicate-comment suppression
+    # ------------------------------------------------------------------
+
+    def is_duplicate_comment(self, suggestion_text: str) -> bool:
+        """Return True if an identical suggestion already exists in the PR comments.
+
+        Uses a simple exact-text match after stripping whitespace.  This prevents
+        the same AI suggestion from being posted again on every incremental review.
+        """
+        needle = suggestion_text.strip()
+        if not needle:
+            return False
+        try:
+            if not getattr(self, "comments", None):
+                self.comments = list(self.pr.get_issue_comments())
+            for comment in self.comments:
+                if needle in (comment.body or "").strip():
+                    return True
+        except Exception as e:
+            get_logger().warning(f"Failed to check for duplicate comment: {e}")
+        return False
 
     def get_commit_range(self):
         last_review_time = self.previous_review.created_at
