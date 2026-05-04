@@ -216,6 +216,17 @@ async def extract_tickets(git_provider):
                     )
             return tickets_content
 
+        else:
+            # Provider-agnostic ticket sources (e.g., Zoho Sprints)
+            try:
+                from pr_agent.tools.zoho_sprints_provider import fetch_zoho_tickets
+                zoho_tickets = await fetch_zoho_tickets(git_provider)
+                if zoho_tickets:
+                    return zoho_tickets
+            except Exception as e:
+                get_logger().warning(f"Zoho Sprints ticket fetch failed: {e}",
+                                     artifact={"traceback": traceback.format_exc()})
+
     except Exception as e:
         get_logger().error(f"Error extracting tickets error= {e}",
                            artifact={"traceback": traceback.format_exc()})

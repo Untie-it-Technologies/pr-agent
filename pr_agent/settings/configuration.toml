@@ -374,3 +374,17 @@ pr_commands = [
     "/review",
     "/improve",
 ]
+
+[zoho_sprints]
+# Zoho Sprints ticket integration — works with any git provider.
+# When enabled, extracts the first digit sequence from the PR title and fetches the
+# item description from Zoho Sprints to include as context in the PR review.
+# Supported PR title formats (all extract "2131"):
+#   [I2131] Fix login bug  |  I2131: Fix login bug  |  ZS-2131 Fix  |  #2131 Fix
+enabled = true
+domain = "zoho.in"   # "zoho.com", "zoho.eu", "zoho.in", etc.
+team_id = "60058870264"
+# Map each repository name to its Zoho Sprints project ID.
+# sprint_id is optional (legacy — no longer required by the API endpoint used).
+# Example: repo_project_map = {my-repo = {project_id = "49899000000053149"}}
+repo_project_map = {"*FYLZ*"= {project_id = "49899000000053149"},"*cc*"={project_id = "49899000000234016"},"*1987*"={project_id = "49899000000020008"}}
