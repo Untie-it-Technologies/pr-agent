@@ -163,7 +163,11 @@ class GithubProvider(GitProvider):
             # Use a single compare() call instead of walking per-commit file lists.
             # This gives the exact diff between the last-reviewed state and the current head
             # with far fewer GitHub API calls.
-            prev_sha = self.incremental.last_seen_commit_sha
+            #
+            # Prefer the precisely stored SHA (written by store_reviewed_sha after every
+            # successful review) over the timestamp-derived last_seen_commit_sha, because
+            # timestamps can be unreliable with squashed or force-pushed commits.
+            prev_sha = self.get_reviewed_sha_from_comments() or self.incremental.last_seen_commit_sha
             head_sha = self.pr.head.sha
             if prev_sha and head_sha and prev_sha != head_sha:
                 try:
@@ -934,11 +938,20 @@ class GithubProvider(GitProvider):
             self.auth = auth
         elif self.deployment_type == 'user':
             try:
+                # Debug logging to identify config state
+                github_settings = get_settings().get("GITHUB", {})
+                available_keys = [k for k in github_settings.keys()] if hasattr(github_settings, "keys") else "No keys"
+                get_logger().info(f"Checking GitHub settings. Available keys: {available_keys}")
+                
                 token = get_settings().github.user_token
-            except AttributeError as e:
-                raise ValueError(
-                    "GitHub token is required when using user deployment. See: "
-                    "https://github.com/Codium-ai/pr-agent#method-2-run-from-source") from e
+            except (AttributeError, Exception) as e:
+                # Re-check with safer get() just in case
+                token = get_settings().get("GITHUB.USER_TOKEN")
+                if not token:
+                    get_logger().error(f"Failed to find GitHub token. Error: {str(e)}")
+                    raise ValueError(
+                        "GitHub token is required when using user deployment. See: "
+                        "https://github.com/Codium-ai/pr-agent#method-2-run-from-source") from e
             self.auth = Auth.Token(token)
         if self.auth:
             return Github(auth=self.auth, base_url=self.base_url)
