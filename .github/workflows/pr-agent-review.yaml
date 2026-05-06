@@ -1,24 +1,17 @@
-# PR Agent — automatic review workflow
+# PR Agent — automatic review workflow (self-hosted on this repo)
 #
 # Events handled:
-#   pull_request (opened / reopened / ready_for_review)
-#     → runs pr_commands: /describe, /review (full), /improve (inline suggestions)
+#   pull_request (opened / reopened / ready_for_review)  → full /review
+#   pull_request (synchronize — new commits)             → incremental /review -i
+#   issue_comment (created)                              → manual /review, /describe, /improve
 #
-#   pull_request (synchronize — new commits pushed to open PR)
-#     → runs push_commands: /describe, /review -i (incremental), /improve (inline)
-#       Only files changed since the last reviewed SHA are reviewed.
-#       The reviewed SHA is stored in a hidden PR comment so no external state is needed.
-#
-#   issue_comment (created)
-#     → allows manual /review, /improve, /describe commands in PR comments
-#
-# Required GitHub secrets (set in repo Settings → Secrets and variables → Actions):
-#   ANTHROPIC_KEY                  — Anthropic API key for Claude models
-#   ZOHO_SPRINTS__CLIENT_ID        — Zoho Sprints OAuth client ID
-#   ZOHO_SPRINTS__CLIENT_SECRET    — Zoho Sprints OAuth client secret
-#   ZOHO_SPRINTS__REFRESH_TOKEN    — Zoho Sprints OAuth refresh token
-#
-# GITHUB_TOKEN is provided automatically by GitHub Actions.
+# Required secrets (Settings → Secrets and variables → Actions):
+#   ANTHROPIC_KEY                  — Anthropic API key
+#   ZOHO_SPRINTS__CLIENT_ID        — Zoho OAuth client ID
+#   ZOHO_SPRINTS__CLIENT_SECRET    — Zoho OAuth client secret
+#   ZOHO_SPRINTS__REFRESH_TOKEN    — Zoho OAuth refresh token
+#   ZOHO_SPRINTS__TEAM_ID          — Zoho Sprints team ID
+#   ZOHO_SPRINTS__REPO_PROJECT_MAP — JSON: {"repo-name":{"project_id":"..."}}
 
 name: PR Agent
 
@@ -35,7 +28,6 @@ permissions:
 
 jobs:
   pr_agent_job:
-    # Skip bot-generated PRs/comments to avoid feedback loops
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request != null &&
@@ -44,24 +36,12 @@ jobs:
     name: Run PR Agent
     steps:
       - name: PR Agent
-        uses: unt-dushyant/pr-agent@6260b666a5e44fe197b6a226650590103e33a105
-        env:
-          # ── GitHub auth ──────────────────────────────────────────────
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          # ── LLM: Anthropic Claude ────────────────────────────────────
-          # Override the default GPT model set in configuration.toml
-          ANTHROPIC__KEY: ${{ secrets.ANTHROPIC_KEY }}
-          CONFIG__MODEL: claude-sonnet-4-6
-          CONFIG__FALLBACK_MODELS: '["claude-haiku-4-5-20251001"]'
-
-          # ── Zoho Sprints ticket context ───────────────────────────────
-          ZOHO_SPRINTS__CLIENT_ID: ${{ secrets.ZOHO_SPRINTS__CLIENT_ID }}
-          ZOHO_SPRINTS__CLIENT_SECRET: ${{ secrets.ZOHO_SPRINTS__CLIENT_SECRET }}
-          ZOHO_SPRINTS__REFRESH_TOKEN: ${{ secrets.ZOHO_SPRINTS__REFRESH_TOKEN }}
-
-          # ── Behaviour overrides ───────────────────────────────────────
-          # Publish output even when no major issues are found
-          CONFIG__PUBLISH_OUTPUT: true
-          # Require ticket analysis to be included in the review
-          PR_REVIEWER__REQUIRE_TICKET_ANALYSIS_REVIEW: true
+        uses: ./
+        with:
+          anthropic_key: ${{ secrets.ANTHROPIC_KEY }}
+          zoho_enabled: 'true'
+          zoho_team_id: ${{ secrets.ZOHO_SPRINTS__TEAM_ID }}
+          zoho_client_id: ${{ secrets.ZOHO_SPRINTS__CLIENT_ID }}
+          zoho_client_secret: ${{ secrets.ZOHO_SPRINTS__CLIENT_SECRET }}
+          zoho_refresh_token: ${{ secrets.ZOHO_SPRINTS__REFRESH_TOKEN }}
+          zoho_repo_project_map: ${{ secrets.ZOHO_SPRINTS__REPO_PROJECT_MAP }}

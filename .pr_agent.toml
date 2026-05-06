@@ -1,19 +1,12 @@
 [pr_reviewer]
 enable_review_labels_effort = true
 enable_auto_approval = true
+inline_code_comments = true
 
-[github_app]
-pr_commands = [
-    "/describe --pr_description.publish_description_as_comment=true",
-    "/improve",
-    "/agentic_review"
-]
-
-handle_push_trigger = true
-push_commands = [
-    "/improve",
-    "/agentic_review"
-]
+[zoho_sprints]
+# team_id and repo_project_map are injected via env vars (ZOHO_SPRINTS__TEAM_ID, etc.)
+# Add repo-to-project mappings here if not using env vars:
+# repo_project_map = {my-repo = {project_id = "49899000000053149"}}
 
 [review_agent]
 enabled = true
