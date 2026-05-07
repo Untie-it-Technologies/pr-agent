@@ -53,6 +53,7 @@ runs:
       with:
         python-version: '3.12'
         cache: 'pip'
+        cache-dependency-path: '${{ github.action_path }}/requirements.txt'
 
     - name: Install PR Agent
       run: pip install -e "${{ github.action_path }}"
