@@ -49,6 +49,8 @@ MAX_TOKENS = {
     'gpt-5.4-mini-2026-03-17': 400000,  # 400K, but may be limited by config.max_model_tokens
     'gpt-5.4-nano': 400000,  # 400K, but may be limited by config.max_model_tokens
     'gpt-5.4-nano-2026-03-17': 400000,  # 400K, but may be limited by config.max_model_tokens
+    'gpt-5.5': 1050000,  # 1.05M, but may be limited by config.max_model_tokens
+    'gpt-5.5-2026-04-23': 1050000,  # 1.05M, but may be limited by config.max_model_tokens
     'o1-mini': 128000,  # 128K, but may be limited by config.max_model_tokens
     'o1-mini-2024-09-12': 128000,  # 128K, but may be limited by config.max_model_tokens
     'o1-preview': 128000,  # 128K, but may be limited by config.max_model_tokens
@@ -81,6 +83,7 @@ MAX_TOKENS = {
     'vertex_ai/claude-opus-4-5@20251101': 200000,
     'vertex_ai/claude-opus-4-6@20260120': 200000,
     'vertex_ai/claude-opus-4-6': 200000,
+    'vertex_ai/claude-opus-4-7': 1000000,
     'vertex_ai/claude-3-5-sonnet@20240620': 100000,
     'vertex_ai/claude-3-5-sonnet-v2@20241022': 100000,
     'vertex_ai/claude-3-7-sonnet@20250219': 200000,
@@ -127,6 +130,7 @@ MAX_TOKENS = {
     'anthropic/claude-opus-4-5-20251101': 200000,
     'anthropic/claude-opus-4-6': 200000,
     'anthropic/claude-opus-4-6-20260120': 200000,
+    'anthropic/claude-opus-4-7': 1000000,
     'anthropic/claude-3-5-sonnet-20240620': 100000,
     'anthropic/claude-3-5-sonnet-20241022': 100000,
     'anthropic/claude-3-7-sonnet-20250219': 200000,
@@ -137,6 +141,7 @@ MAX_TOKENS = {
     'claude-opus-4-5-20251101': 200000,
     'claude-opus-4-6': 200000,
     'claude-opus-4-6-20260120': 200000,
+    'claude-opus-4-7': 1000000,
     'claude-3-7-sonnet-20250219': 200000,
     'claude-sonnet-4-6': 200000,
     'anthropic/claude-3-5-haiku-20241022': 100000,
@@ -150,6 +155,7 @@ MAX_TOKENS = {
     'bedrock/anthropic.claude-opus-4-1-20250805-v1:0': 200000,
     'bedrock/anthropic.claude-opus-4-6-20260120-v1:0': 200000,
     'bedrock/anthropic.claude-opus-4-6-v1:0': 200000,
+    'bedrock/anthropic.claude-opus-4-7': 1000000,
     'bedrock/anthropic.claude-3-haiku-20240307-v1:0': 100000,
     'bedrock/anthropic.claude-3-5-haiku-20241022-v1:0': 100000,
     'bedrock/anthropic.claude-haiku-4-5-20251001-v1:0': 200000,
@@ -166,6 +172,8 @@ MAX_TOKENS = {
     "bedrock/us.anthropic.claude-opus-4-5-20251101-v1:0": 200000,
     "bedrock/global.anthropic.claude-opus-4-6-v1:0": 200000,
     "bedrock/us.anthropic.claude-opus-4-6-v1:0": 200000,
+    "bedrock/global.anthropic.claude-opus-4-7": 1000000,
+    "bedrock/us.anthropic.claude-opus-4-7": 1000000,
     "bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0": 100000,
     "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0": 200000,
     "bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0": 200000,

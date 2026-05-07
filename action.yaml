@@ -1,5 +1,5 @@
-name: 'PR Agent'
-description: 'AI-powered PR reviews with optional Zoho Sprints ticket context'
+name: 'The PR Agent'
+description: 'Summarize, review and suggest improvements for pull requests'
 branding:
   icon: 'award'
   color: 'green'
