@@ -104,16 +104,22 @@ async def run_action():
                                 setting.extra_instructions = updated_instructions
     except Exception as e:
         get_logger().info(f"github action: failed to apply language-specific instructions: {e}")
-    # Handle pull request opened event
+    # Handle pull request events
     if GITHUB_EVENT_NAME == "pull_request" or GITHUB_EVENT_NAME == "pull_request_target":
         action = event_payload.get("action")
+        pr_url = event_payload.get("pull_request", {}).get("url")
 
-        # Retrieve the list of actions from the configuration
-        pr_actions = get_settings().get("GITHUB_ACTION_CONFIG.PR_ACTIONS", ["opened", "reopened", "ready_for_review", "review_requested"])
+        if action == "synchronize" and pr_url:
+            # New commits pushed to an open PR — run incremental review only
+            get_settings().config.is_auto_command = True
+            get_logger().info("Running incremental review for synchronize event")
+            await PRReviewer(pr_url, is_auto=True, args=['-i']).run()
 
-        if action in pr_actions:
-            pr_url = event_payload.get("pull_request", {}).get("url")
-            if pr_url:
+        else:
+            # Retrieve the list of actions from the configuration
+            pr_actions = get_settings().get("GITHUB_ACTION_CONFIG.PR_ACTIONS", ["opened", "reopened", "ready_for_review", "review_requested"])
+
+            if action in pr_actions and pr_url:
                 # legacy - supporting both GITHUB_ACTION and GITHUB_ACTION_CONFIG
                 auto_review = get_setting_or_env("GITHUB_ACTION.AUTO_REVIEW", None)
                 if auto_review is None:
@@ -125,20 +131,18 @@ async def run_action():
                 if auto_improve is None:
                     auto_improve = get_setting_or_env("GITHUB_ACTION_CONFIG.AUTO_IMPROVE", None)
 
-                # Set the configuration for auto actions
-                get_settings().config.is_auto_command = True  # Set the flag to indicate that the command is auto
-                get_settings().pr_description.final_update_message = False  # No final update message when auto_describe is enabled
+                get_settings().config.is_auto_command = True
+                get_settings().pr_description.final_update_message = False
                 get_logger().info(f"Running auto actions: auto_describe={auto_describe}, auto_review={auto_review}, auto_improve={auto_improve}")
 
-                # invoke by default all three tools
                 if auto_describe is None or is_true(auto_describe):
                     await PRDescription(pr_url).run()
                 if auto_review is None or is_true(auto_review):
-                    await PRReviewer(pr_url).run()
+                    await PRReviewer(pr_url, is_auto=True).run()
                 if auto_improve is None or is_true(auto_improve):
                     await PRCodeSuggestions(pr_url).run()
-        else:
-            get_logger().info(f"Skipping action: {action}")
+            else:
+                get_logger().info(f"Skipping action: {action}")
 
     # Handle issue comment event
     elif GITHUB_EVENT_NAME == "issue_comment" or GITHUB_EVENT_NAME == "pull_request_review_comment":

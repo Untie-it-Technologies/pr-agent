@@ -91,7 +91,9 @@ final_update_message = true
 enable_review_labels_security=true
 enable_review_labels_effort=true
 # specific configurations for incremental review (/review -i)
+# require_all_thresholds=false means ANY threshold being met will allow the review to proceed
 require_all_thresholds_for_incremental_review=false
+# set both to 0 to ensure every push immediately triggers an incremental review
 minimal_commits_for_incremental_review=0
 minimal_minutes_for_incremental_review=0
 enable_intro_text=true
@@ -243,7 +245,7 @@ pr_commands = [
     "/improve",
 ]
 # settings for "pull_request" event with "synchronize" action - used to detect and handle push triggers for new commits
-handle_push_trigger = false
+handle_push_trigger = true
 push_trigger_ignore_bot_commits = true
 push_trigger_ignore_merge_commits = true
 push_trigger_wait_for_initial_review = true
@@ -251,7 +253,8 @@ push_trigger_pending_tasks_backlog = true
 push_trigger_pending_tasks_ttl = 300
 push_commands = [
     "/describe",
-    "/review",
+    "/review -i",
+    "/improve",
 ]
 
 [gitlab]
@@ -374,3 +377,17 @@ pr_commands = [
     "/review",
     "/improve",
 ]
+
+[zoho_sprints]
+# Zoho Sprints ticket integration — works with any git provider.
+# When enabled, extracts the first digit sequence from the PR title and fetches the
+# item description from Zoho Sprints to include as context in the PR review.
+# Supported PR title formats (all extract "2131"):
+#   [I2131] Fix login bug  |  I2131: Fix login bug  |  ZS-2131 Fix  |  #2131 Fix
+enabled = true
+domain = "zoho.in"   # "zoho.com", "zoho.eu", "zoho.in", etc.
+team_id = "60058870264"
+# Map each repository name to its Zoho Sprints project ID.
+# sprint_id is optional (legacy — no longer required by the API endpoint used).
+# Example: repo_project_map = {my-repo = {project_id = "49899000000053149"}}
+repo_project_map = {"*FYLZ*"= {project_id = "49899000000053149"},"*cc*"={project_id = "49899000000234016"},"*1987*"={project_id = "49899000000020008"}}
